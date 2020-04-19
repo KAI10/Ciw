@@ -14,6 +14,8 @@ class ArrivalNode(object):
         self.simulation = simulation
         self.number_of_individuals = 0
         self.number_accepted_individuals = 0
+        self.number_of_individuals_per_class = [0] * self.simulation.network.number_of_classes
+
         self.event_dates_dict = {nd + 1: {clss: False for clss in range(
             self.simulation.network.number_of_classes)}
             for nd in range(self.simulation.network.number_of_nodes)}
@@ -72,6 +74,7 @@ class ArrivalNode(object):
         batch = self.batch_size(self.next_node, self.next_class)
         for _ in range(batch):
             self.number_of_individuals += 1
+            self.number_of_individuals_per_class[self.next_class] += 1
             priority_class = self.simulation.network.priority_class_mapping[
                 self.next_class]
             next_individual = Individual(self.number_of_individuals,
@@ -84,11 +87,18 @@ class ArrivalNode(object):
             next_node = self.simulation.transitive_nodes[self.next_node - 1]
             self.release_individual(next_node, next_individual)
 
-        self.event_dates_dict[self.next_node][
-            self.next_class] = self.increment_time(
+        # setting the next arrival time here, need to add condition here
+        # to set fixed number of customers for a certain class
+        if self.number_of_individuals_per_class[self.next_class] < \
+            self.simulation.network.customer_classes[self.next_class].number_of_customers:
             self.event_dates_dict[self.next_node][
-            self.next_class], self.inter_arrival(
-            self.next_node, self.next_class))
+                self.next_class] = self.increment_time(
+                self.event_dates_dict[self.next_node][
+                self.next_class], self.inter_arrival(
+                self.next_node, self.next_class))
+        else: 
+            self.event_dates_dict[self.next_node][self.next_class] = float('Inf')
+
         self.find_next_event_date()
 
     def increment_time(self, original, increment):

@@ -41,7 +41,8 @@ def create_network(arrival_distributions=None,
                    queue_capacities=None,
                    service_distributions=None,
                    routing=None,
-                   batching_distributions=None):
+                   batching_distributions=None,
+                   number_of_customers_per_class=None):
     """
     Takes in kwargs, creates dictionary.
     """
@@ -66,6 +67,8 @@ def create_network(arrival_distributions=None,
         params['routing'] = routing
     if batching_distributions != None:
         params['batching_distributions'] = batching_distributions
+    if number_of_customers_per_class != None:
+        params['number_of_customers_per_class'] = number_of_customers_per_class
 
     return create_network_from_dictionary(params)
 
@@ -126,6 +129,7 @@ def create_network_from_dictionary(params_input):
     batches = [params['batching_distributions']['Class ' + str(clss)]
         for clss in range(len(params['batching_distributions']))]
     number_of_classes = params['number_of_classes']
+    number_of_customers_per_class = params['number_of_customers_per_class']
     number_of_nodes = params['number_of_nodes']
     queueing_capacities = [float(i) if i == "Inf" else i for i in params['queue_capacities']]
     class_change_matrices = params.get('class_change_matrices',
@@ -165,7 +169,9 @@ def create_network_from_dictionary(params_input):
                 routing,
                 priorities[clss],
                 baulking_functions[clss],
-                batches[clss]))
+                batches[clss],
+                number_of_customers_per_class[clss])
+            )
         else:
             classes.append(CustomerClass(
                 arrivals[clss],
@@ -173,7 +179,9 @@ def create_network_from_dictionary(params_input):
                 routing[clss],
                 priorities[clss],
                 baulking_functions[clss],
-                batches[clss]))
+                batches[clss],
+                number_of_customers_per_class[clss])
+            )
     n = Network(nodes, classes)
     if all(isinstance(f, types.FunctionType) for f in params['routing']):
         n.process_based = True
@@ -223,7 +231,8 @@ def fill_out_dictionary(params_input):
         'batching_distributions': {'Class ' + str(i): [
             ciw.dists.Deterministic(1) for _ in range(
             len(params['number_of_servers']))] for i in range(
-            len(params['arrival_distributions']))}
+            len(params['arrival_distributions']))},
+        'number_of_customers_per_class': [float('Inf')]*len(params['arrival_distributions'])
         }
 
     for a in default_dict:
@@ -311,3 +320,7 @@ def validify_dictionary(params):
         if isinstance(n, str) and n != 'Inf':
             if n not in params:
                 raise ValueError('No schedule ' + str(n) + ' defined.')
+
+    if 'number_of_customers_per_class' in params:
+        if any(x < 0 for x in params['number_of_customers_per_class']):
+            raise ValueError('Ensure that number of customers for each class is non-negative.')

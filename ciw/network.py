@@ -33,6 +33,7 @@ class CustomerClass(object):
       - priority class
       - baulking functions
       - batching distributions
+      - number of customers 
     """
     def __init__(self,
                  arrival_distributions,
@@ -40,7 +41,8 @@ class CustomerClass(object):
                  routing,
                  priority_class,
                  baulking_functions,
-                 batching_distributions):
+                 batching_distributions,
+                 number_of_customers=float("Inf")):
         """
         Initialises the CutomerCass object.
         """
@@ -50,6 +52,7 @@ class CustomerClass(object):
         self.routing = routing
         self.priority_class = priority_class
         self.baulking_functions = baulking_functions
+        self.number_of_customers = number_of_customers
 
 class Network(object):
     """
