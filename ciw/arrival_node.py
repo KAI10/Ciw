@@ -14,7 +14,7 @@ class ArrivalNode(object):
         self.simulation = simulation
         self.number_of_individuals = 0
         self.number_accepted_individuals = 0
-        self.number_of_individuals_per_class = [0] * self.simulation.network.number_of_classes
+        self.number_of_accepted_individuals_per_class = [0] * self.simulation.network.number_of_classes
 
         self.event_dates_dict = {nd + 1: {clss: False for clss in range(
             self.simulation.network.number_of_classes)}
@@ -41,13 +41,16 @@ class ArrivalNode(object):
         """
         if next_node.baulking_functions[self.next_class] is None:
             self.send_individual(next_node, next_individual)
+            return True
         else:
             rnd_num = random()
             if rnd_num < next_node.baulking_functions[self.next_class](
                 next_node.number_of_individuals):
                 self.record_baulk(next_node)
+                return False
             else:
                 self.send_individual(next_node, next_individual)
+                return True
 
     def find_next_event_date(self):
         """
@@ -74,7 +77,6 @@ class ArrivalNode(object):
         batch = self.batch_size(self.next_node, self.next_class)
         for _ in range(batch):
             self.number_of_individuals += 1
-            self.number_of_individuals_per_class[self.next_class] += 1
             priority_class = self.simulation.network.priority_class_mapping[
                 self.next_class]
             next_individual = Individual(self.number_of_individuals,
@@ -85,11 +87,14 @@ class ArrivalNode(object):
                 next_individual.route = self.simulation.network.customer_classes[
                 next_individual.customer_class].routing[self.next_node - 1](next_individual)
             next_node = self.simulation.transitive_nodes[self.next_node - 1]
-            self.release_individual(next_node, next_individual)
+            joined_network = self.release_individual(next_node, next_individual)
+            if joined_network:
+                self.number_of_accepted_individuals_per_class[self.next_class] += 1
+
 
         # setting the next arrival time here, need to add condition here
         # to set fixed number of customers for a certain class
-        if self.number_of_individuals_per_class[self.next_class] < \
+        if self.number_of_accepted_individuals_per_class[self.next_class] < \
             self.simulation.network.customer_classes[self.next_class].number_of_customers:
             self.event_dates_dict[self.next_node][
                 self.next_class] = self.increment_time(
@@ -151,8 +156,10 @@ class ArrivalNode(object):
         """
         if next_node.number_of_individuals >= next_node.node_capacity:
             self.record_rejection(next_node)
+            return False
         else:
-            self.decide_baulk(next_node, next_individual)
+            joined_network = self.decide_baulk(next_node, next_individual)
+            return joined_network
 
     def send_individual(self, next_node, next_individual):
         """
